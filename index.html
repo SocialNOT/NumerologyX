@@ -25,14 +25,6 @@
                   transform: 'translateY(0)'
                 },
               },
-              'aurora': {
-                'from': {
-                  backgroundPosition: '0% 50%'
-                },
-                'to': {
-                  backgroundPosition: '100% 50%'
-                }
-              },
               'twinkle': {
                 '0%, 100%': { opacity: 0.7, transform: 'scale(0.9)' },
                 '50%': { opacity: 1, transform: 'scale(1.1)' }
@@ -41,7 +33,6 @@
             animation: {
               'fade-in': 'fade-in 0.3s ease-in-out forwards',
               'fade-in-up': 'fade-in-up 0.5s ease-out forwards',
-              'aurora': 'aurora 20s ease infinite alternate',
               'twinkle': 'twinkle 4s ease-in-out infinite'
             }
           }
@@ -63,9 +54,18 @@
       ::-webkit-scrollbar-thumb:hover {
         background: rgba(192, 132, 252, 0.8);
       }
+      @keyframes aurora {
+        from {
+          background-position: 0% 50%;
+        }
+        to {
+          background-position: 100% 50%;
+        }
+      }
       .aurora-background {
         background: linear-gradient(-45deg, #0a001a, #1d0a3b, #002d4e, #2e0b4b);
         background-size: 400% 400%;
+        animation: aurora 20s ease infinite alternate;
       }
       .glow-border {
         position: relative;
@@ -95,7 +95,7 @@
 </script>
 <link rel="stylesheet" href="/index.css">
 </head>
-  <body class="bg-gray-900 aurora-background animate-aurora">
+  <body class="bg-gray-900 aurora-background">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

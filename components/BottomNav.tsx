@@ -27,12 +27,15 @@ const NavItem: React.FC<{
     return (
         <button
             onClick={onClick}
-            className={`flex flex-col items-center justify-center w-1/5 py-2 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 rounded-lg relative ${
+            className={`group flex flex-col items-center justify-center w-1/5 py-2 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50 rounded-lg relative ${
                 isActive ? 'text-cyan-300' : 'text-gray-400 hover:text-white'
             }`}
             aria-label={item.label}
             aria-current={isActive ? 'page' : undefined}
         >
+            <span className="absolute bottom-full mb-2 w-max px-2 py-1 bg-gray-900/90 backdrop-blur-sm text-white text-xs rounded-md shadow-lg opacity-0 invisible group-hover:visible group-hover:opacity-100 transition-all duration-300 pointer-events-none">
+                {item.label}
+            </span>
             <div className="relative">
                 <item.icon className={`w-6 h-6 sm:w-7 sm:h-7 transition-transform duration-300 ${isActive ? 'scale-110' : ''}`} />
                 {isActive && (

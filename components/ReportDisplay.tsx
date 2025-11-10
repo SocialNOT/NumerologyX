@@ -6,6 +6,8 @@ import { GemstoneIcon } from './icons/GemstoneIcon';
 import { MantraIcon } from './icons/MantraIcon';
 import { ActivityIcon } from './icons/ActivityIcon';
 import { ReflectionIcon } from './icons/ReflectionIcon';
+import { CheckCircleIcon } from './icons/CheckCircleIcon';
+import { ChevronDownIcon } from './icons/ChevronDownIcon';
 
 interface ReportDisplayProps {
   report: NumerologyReport;
@@ -14,18 +16,43 @@ interface ReportDisplayProps {
 
 type System = 'pythagorean' | 'chaldean';
 
-const NumberCard: React.FC<{ title: string; detail: CalculationDetail }> = ({ title, detail }) => {
+const NumberCard: React.FC<{ title: string; detail: CalculationDetail; keywords: string }> = ({ title, detail, keywords }) => {
     const animatedNumber = useCountUp(detail.number);
+    const [isExpanded, setIsExpanded] = useState(false);
+    const cardId = `calculation-${title.replace(/\s+/g, '-')}`;
+
     return (
-        <Card className="flex flex-col items-center text-center p-4 h-full">
-            <h3 className="text-lg font-semibold text-purple-300">{title}</h3>
-            <div className="flex-grow flex items-center justify-center">
-                <p className="text-5xl font-bold my-2 text-transparent bg-clip-text bg-gradient-to-br from-cyan-300 to-purple-300">{animatedNumber}</p>
+        <Card className="flex flex-col p-0 overflow-hidden">
+            <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="w-full flex flex-col items-center text-center p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-400 rounded-xl"
+                aria-expanded={isExpanded}
+                aria-controls={cardId}
+            >
+                <div className="w-full">
+                    <h3 className="text-lg font-semibold text-purple-300">{title}</h3>
+                    <p className="text-7xl font-bold my-4 text-transparent bg-clip-text bg-gradient-to-br from-cyan-300 to-purple-300">{animatedNumber}</p>
+                    <p className="text-sm text-gray-400 capitalize min-h-[40px]">{keywords.toLowerCase()}</p>
+                </div>
+                <div className="mt-2 text-gray-500">
+                    <ChevronDownIcon className={`w-5 h-5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                </div>
+            </button>
+            <div
+                id={cardId}
+                className={`w-full overflow-hidden transition-all duration-500 ease-in-out px-4 ${isExpanded ? 'max-h-96 pb-4' : 'max-h-0'}`}
+            >
+                <div className="text-left text-xs text-gray-400 w-full border-t border-white/20 pt-3 mt-2">
+                    <h4 className="font-semibold text-gray-300 mb-2">Calculation Steps:</h4>
+                    {detail.steps.split('\n').filter(s => s.trim() !== '').map((step, index) => (
+                        <p key={index} className="whitespace-pre-wrap leading-relaxed">{step}</p>
+                    ))}
+                </div>
             </div>
-            <p className="text-xs text-gray-400 leading-normal whitespace-pre-wrap">{detail.steps}</p>
         </Card>
     );
 };
+
 
 const InterpretationCard: React.FC<{ title: string; interpretation: Interpretation; delay: number }> = ({ title, interpretation, delay }) => (
     <Card className="opacity-0 animate-fade-in-up bg-gradient-to-br from-purple-950/20 via-transparent to-transparent" style={{ animationDelay: `${delay}ms`, animationFillMode: 'forwards' }}>
@@ -35,7 +62,7 @@ const InterpretationCard: React.FC<{ title: string; interpretation: Interpretati
     </Card>
 );
 
-const RemedyCard: React.FC<{ remedy: Remedy }> = ({ remedy }) => {
+const RemedyCard: React.FC<{ remedy: Remedy; isApplied: boolean; onClick: () => void }> = ({ remedy, isApplied, onClick }) => {
     const remedyIcons: Record<Remedy['type'], React.ReactNode> = {
         Gemstone: <GemstoneIcon className="w-6 h-6 mr-3 text-pink-400 flex-shrink-0" />,
         Mantra: <MantraIcon className="w-6 h-6 mr-3 text-yellow-400 flex-shrink-0" />,
@@ -44,13 +71,25 @@ const RemedyCard: React.FC<{ remedy: Remedy }> = ({ remedy }) => {
     };
 
     return (
-      <div className={`flex items-start p-4 rounded-lg bg-black/20`}>
-        {remedyIcons[remedy.type]}
-        <div>
-            <h4 className="font-semibold">{remedy.title}</h4>
-            <p className="text-sm text-gray-400 mt-1">{remedy.description}</p>
+      <button 
+        onClick={onClick}
+        className={`w-full flex items-start p-4 rounded-lg bg-black/20 text-left transition-all duration-300 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 relative overflow-hidden ${isApplied ? 'ring-2 ring-cyan-400/50' : 'hover:bg-black/40'}`}
+        aria-pressed={isApplied}
+      >
+        <div className={`absolute inset-0 bg-gradient-to-r from-cyan-400/20 to-transparent transition-transform duration-500 ease-out ${isApplied ? 'translate-x-0' : '-translate-x-full'}`}></div>
+        <div className="relative z-10 flex items-start w-full">
+            {remedyIcons[remedy.type]}
+            <div className="flex-grow">
+                <h4 className="font-semibold">{remedy.title}</h4>
+                <p className="text-sm text-gray-400 mt-1">{remedy.description}</p>
+            </div>
+            <div className="w-6 h-6 ml-2 flex-shrink-0">
+                <div className={`transition-all duration-300 ${isApplied ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
+                    <CheckCircleIcon className="w-6 h-6 text-cyan-400" />
+                </div>
+            </div>
         </div>
-      </div>
+      </button>
     )
 };
 
@@ -74,7 +113,16 @@ const SystemToggle: React.FC<{ activeSystem: System; onSystemChange: (system: Sy
 
 export const ReportDisplay: React.FC<ReportDisplayProps> = ({ report, onReset }) => {
   const [activeSystem, setActiveSystem] = useState<System>('pythagorean');
+  const [appliedRemedies, setAppliedRemedies] = useState<boolean[]>(() => report.quickRemedies.map(() => false));
   
+  const handleRemedyClick = (index: number) => {
+    setAppliedRemedies(prev => {
+        const newApplied = [...prev];
+        newApplied[index] = !newApplied[index];
+        return newApplied;
+    });
+  };
+
   const activeReport: SystemReport = report[activeSystem];
 
   return (
@@ -83,11 +131,11 @@ export const ReportDisplay: React.FC<ReportDisplayProps> = ({ report, onReset })
         {/* System Toggle and Numbers Grid */}
         <Card className="opacity-0 animate-fade-in-up" style={{animationDelay: '150ms', animationFillMode: 'forwards'}}>
              <SystemToggle activeSystem={activeSystem} onSystemChange={setActiveSystem} />
-             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <NumberCard title="Life Path" detail={activeReport.calculations.lifePath} />
-                <NumberCard title="Destiny" detail={activeReport.calculations.destiny} />
-                <NumberCard title="Soul Urge" detail={activeReport.calculations.soulUrge} />
-                <NumberCard title="Personality" detail={activeReport.calculations.personality} />
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <NumberCard title="Life Path" detail={activeReport.calculations.lifePath} keywords={activeReport.interpretations.lifePath.keywords} />
+                <NumberCard title="Destiny" detail={activeReport.calculations.destiny} keywords={activeReport.interpretations.destiny.keywords} />
+                <NumberCard title="Soul Urge" detail={activeReport.calculations.soulUrge} keywords={activeReport.interpretations.soulUrge.keywords} />
+                <NumberCard title="Personality" detail={activeReport.calculations.personality} keywords={activeReport.interpretations.personality.keywords} />
             </div>
         </Card>
        
@@ -109,7 +157,14 @@ export const ReportDisplay: React.FC<ReportDisplayProps> = ({ report, onReset })
         <Card className="opacity-0 animate-fade-in-up bg-gradient-to-br from-purple-950/20 via-transparent to-transparent" style={{animationDelay: '900ms', animationFillMode: 'forwards'}}>
             <h2 className="text-2xl font-bold text-center mb-4 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-cyan-400">Personalized Remedies</h2>
             <div className="space-y-4">
-                {report.quickRemedies.map((remedy, index) => <RemedyCard key={index} remedy={remedy} />)}
+                {report.quickRemedies.map((remedy, index) => (
+                    <RemedyCard 
+                        key={index} 
+                        remedy={remedy} 
+                        isApplied={appliedRemedies[index]}
+                        onClick={() => handleRemedyClick(index)} 
+                    />
+                ))}
             </div>
         </Card>
 

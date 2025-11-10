@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { NumerologyForm } from './components/NumerologyForm';
 import { ReportDisplay } from './components/ReportDisplay';
 import { Header } from './components/Header';
@@ -34,6 +34,38 @@ const App: React.FC = () => {
   const [isLoadingPredictions, setIsLoadingPredictions] = useState<boolean>(false);
   const [predictionsError, setPredictionsError] = useState<string | null>(null);
 
+  useEffect(() => {
+    try {
+      const savedReportJSON = localStorage.getItem('numerology_report');
+      const savedUserDataJSON = localStorage.getItem('numerology_user_data');
+      const savedProfileTraitsJSON = localStorage.getItem('numerology_profile_traits');
+      const savedPredictionsJSON = localStorage.getItem('predictions_report');
+
+      if (savedReportJSON && savedUserDataJSON) {
+        const savedReport: NumerologyReport = JSON.parse(savedReportJSON);
+        const savedUserData: UserData = JSON.parse(savedUserDataJSON);
+        setReport(savedReport);
+        setUserData(savedUserData);
+
+        if (savedProfileTraitsJSON) {
+          const savedProfileTraits: UserProfileData = JSON.parse(savedProfileTraitsJSON);
+          setProfileTraits(savedProfileTraits);
+        }
+        if (savedPredictionsJSON) {
+          const savedPredictions: PredictionsReport = JSON.parse(savedPredictionsJSON);
+          setPredictions(savedPredictions);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load data from local storage", error);
+      // Clear potentially corrupted data
+      localStorage.removeItem('numerology_report');
+      localStorage.removeItem('numerology_user_data');
+      localStorage.removeItem('numerology_profile_traits');
+      localStorage.removeItem('predictions_report');
+    }
+  }, []);
+
 
   const handleCalculate = useCallback(async (newUserData: UserData) => {
     setIsLoadingReport(true);
@@ -41,7 +73,9 @@ const App: React.FC = () => {
     setReport(null);
     setProfileTraits(null);
     setPredictions(null); // Clear old predictions
+    localStorage.removeItem('predictions_report'); // Also clear from storage
     setUserData(newUserData);
+    setChatMessages([]); // Reset chat when a new report is generated
 
     try {
       const generatedReport = await generateNumerologyReport(newUserData);
@@ -52,9 +86,14 @@ const App: React.FC = () => {
       try {
         const traits = await generateProfileTraits(generatedReport.pythagorean.calculations);
         setProfileTraits(traits);
+        // Save all data to local storage on complete success
+        localStorage.setItem('numerology_report', JSON.stringify(generatedReport));
+        localStorage.setItem('numerology_user_data', JSON.stringify(newUserData));
+        localStorage.setItem('numerology_profile_traits', JSON.stringify(traits));
       } catch (profileErr) {
         // Handle profile-specific error gracefully, the main report is still visible
         console.error("Could not generate profile traits:", profileErr);
+        localStorage.removeItem('numerology_profile_traits'); // Clear any old traits
       } finally {
         setIsLoadingProfile(false);
       }
@@ -62,6 +101,11 @@ const App: React.FC = () => {
     } catch (err) {
       console.error(err);
       setReportError(err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.');
+      // Clear storage on error
+      localStorage.removeItem('numerology_report');
+      localStorage.removeItem('numerology_user_data');
+      localStorage.removeItem('numerology_profile_traits');
+      localStorage.removeItem('predictions_report');
     } finally {
       setIsLoadingReport(false);
     }
@@ -75,6 +119,12 @@ const App: React.FC = () => {
     setProfileTraits(null);
     setPredictions(null);
     setPredictionsError(null);
+    setChatMessages([]); // Reset chat
+    // Clear from localStorage
+    localStorage.removeItem('numerology_report');
+    localStorage.removeItem('numerology_user_data');
+    localStorage.removeItem('numerology_profile_traits');
+    localStorage.removeItem('predictions_report');
   }, []);
   
   const handleGeneratePredictions = useCallback(async (year: number) => {
@@ -85,10 +135,12 @@ const App: React.FC = () => {
     setIsLoadingPredictions(true);
     setPredictionsError(null);
     setPredictions(null);
+    localStorage.removeItem('predictions_report'); // Clear old predictions
 
     try {
       const result = await generatePredictions(userData, year);
       setPredictions(result);
+      localStorage.setItem('predictions_report', JSON.stringify(result));
     } catch (err) {
       setPredictionsError(err instanceof Error ? err.message : "Failed to generate predictions.");
     } finally {
@@ -103,8 +155,12 @@ const App: React.FC = () => {
     setIsChatLoading(true);
 
     try {
-      const responseText = await continueChat([...chatMessages, newUserMessage]);
-      const newModelMessage: ChatMessage = { role: 'model', text: responseText };
+      const response = await continueChat([...chatMessages, newUserMessage], report);
+      const newModelMessage: ChatMessage = { 
+        role: 'model', 
+        text: response.text,
+        sources: response.sources
+      };
       setChatMessages(prev => [...prev, newModelMessage]);
     } catch (err) {
       const errorMessage: ChatMessage = { role: 'model', text: "Sorry, I'm having trouble connecting. Please try again." };
@@ -112,7 +168,7 @@ const App: React.FC = () => {
     } finally {
       setIsChatLoading(false);
     }
-  }, [chatMessages]);
+  }, [chatMessages, report]);
 
   const handleViewChange = (view: View) => {
     setActiveView(view);
@@ -155,19 +211,13 @@ const App: React.FC = () => {
       default:
         return null;
     }
-  }, [activeView, report, handleReset, handleCalculate, isLoadingReport, reportError, chatMessages, handleSendMessage, isChatLoading, userData, profileTraits, isLoadingProfile, predictions, isLoadingPredictions, predictionsError, handleGeneratePredictions]);
-  
-  const showVerticalCenter = (activeView === 'report' && !report) || (activeView === 'predictions' && !userData);
+  }, [activeView, report, handleReset, handleCalculate, isLoadingReport, reportError, chatMessages, handleSendMessage, isChatLoading, userData, predictions, isLoadingPredictions, predictionsError, handleGeneratePredictions, profileTraits, isLoadingProfile]);
 
   return (
-    <div className="h-screen text-white font-sans bg-gray-900">
+    <div className="min-h-screen text-white flex flex-col items-center">
       <Header />
-      <main className="h-full overflow-y-auto pt-20 pb-40">
-        <div className={`w-full max-w-2xl mx-auto flex flex-col min-h-full p-4 sm:p-6 lg:p-8 ${showVerticalCenter ? 'justify-center' : ''}`}>
-            <div key={viewTransitionKey} className="animate-fade-in w-full">
-              {content}
-            </div>
-        </div>
+      <main key={viewTransitionKey} className="w-full max-w-2xl mx-auto px-4 pt-20 pb-40 flex-grow animate-fade-in">
+        {content}
       </main>
       <Footer />
       <BottomNav activeView={activeView} setActiveView={handleViewChange} />

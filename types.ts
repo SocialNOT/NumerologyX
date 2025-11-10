@@ -52,6 +52,7 @@ export interface NumerologyReport {
 export interface ChatMessage {
     role: 'user' | 'model';
     text: string;
+    sources?: { title: string; uri: string }[];
 }
 
 // For Daily Report Module

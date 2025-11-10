@@ -58,9 +58,9 @@ const UserProfile: React.FC<UserProfileProps> = ({ report, userData, profileTrai
         </div>
       </Card>
       
-      {/* Core Numbers Card */}
+      {/* Pythagorean Core Numbers Card */}
       <Card className="opacity-0 animate-fade-in-up" style={{ animationDelay: '150ms', animationFillMode: 'forwards' }}>
-        <h3 className="text-xl font-bold text-center mb-4 text-cyan-300">Your Core Numbers (Pythagorean)</h3>
+        <h3 className="text-xl font-bold text-center mb-4 text-cyan-300">Core Numbers (Pythagorean)</h3>
         <div className="grid grid-cols-2 gap-4 text-center">
             <div>
                 <p className="text-sm text-gray-400">Life Path</p>
@@ -80,9 +80,32 @@ const UserProfile: React.FC<UserProfileProps> = ({ report, userData, profileTrai
             </div>
         </div>
       </Card>
+      
+      {/* Chaldean Core Numbers Card */}
+      <Card className="opacity-0 animate-fade-in-up" style={{ animationDelay: '225ms', animationFillMode: 'forwards' }}>
+        <h3 className="text-xl font-bold text-center mb-4 text-purple-300">Core Numbers (Chaldean)</h3>
+        <div className="grid grid-cols-2 gap-4 text-center">
+            <div>
+                <p className="text-sm text-gray-400">Life Path</p>
+                <p className="text-2xl font-bold">{report.chaldean.calculations.lifePath.number}</p>
+            </div>
+            <div>
+                <p className="text-sm text-gray-400">Destiny</p>
+                <p className="text-2xl font-bold">{report.chaldean.calculations.destiny.number}</p>
+            </div>
+             <div>
+                <p className="text-sm text-gray-400">Soul Urge</p>
+                <p className="text-2xl font-bold">{report.chaldean.calculations.soulUrge.number}</p>
+            </div>
+             <div>
+                <p className="text-sm text-gray-400">Personality</p>
+                <p className="text-2xl font-bold">{report.chaldean.calculations.personality.number}</p>
+            </div>
+        </div>
+      </Card>
 
       {/* Cosmic Traits Card */}
-      <Card className="opacity-0 animate-fade-in-up" style={{ animationDelay: '300ms', animationFillMode: 'forwards' }}>
+      <Card className="opacity-0 animate-fade-in-up" style={{ animationDelay: '375ms', animationFillMode: 'forwards' }}>
          <h3 className="text-xl font-bold text-center mb-4 text-purple-300">Cosmic Traits</h3>
          {isLoading ? (
             <div className="flex justify-center items-center py-4">

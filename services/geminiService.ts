@@ -1,5 +1,5 @@
 import { GoogleGenAI, Chat } from "@google/genai";
-import type { UserData, NumerologyReport, NumerologyCalculations, ChatMessage, DailyReportData, UserProfileData, PredictionsReport, SystemReport } from '../types';
+import type { UserData, NumerologyReport, NumerologyCalculations, ChatMessage, DailyReportData, UserProfileData, PredictionsReport } from '../types';
 import { 
     SYSTEM_PROMPT, 
     RESPONSE_SCHEMA, 
@@ -70,36 +70,88 @@ export async function getDailyReport(currentDate: string): Promise<DailyReportDa
 }
 
 let chatInstance: Chat | null = null;
+let lastReportContext: string | null = null;
 
-async function getChatInstance(): Promise<Chat> {
+function createChatSystemPrompt(report: NumerologyReport | null): string {
+    if (!report) {
+        return CHAT_SYSTEM_PROMPT;
+    }
+
+    const reportSummary = `
+        The user you are chatting with has already generated their numerology report. Here are their key details:
+        - Pythagorean Core Numbers:
+          - Life Path: ${report.pythagorean.calculations.lifePath.number} (${report.pythagorean.interpretations.lifePath.title})
+          - Destiny: ${report.pythagorean.calculations.destiny.number} (${report.pythagorean.interpretations.destiny.title})
+          - Soul Urge: ${report.pythagorean.calculations.soulUrge.number} (${report.pythagorean.interpretations.soulUrge.title})
+          - Personality: ${report.pythagorean.calculations.personality.number} (${report.pythagorean.interpretations.personality.title})
+        - Chaldean Core Numbers:
+          - Life Path: ${report.chaldean.calculations.lifePath.number} (${report.chaldean.interpretations.lifePath.title})
+          - Destiny: ${report.chaldean.calculations.destiny.number} (${report.chaldean.interpretations.destiny.title})
+          - Soul Urge: ${report.chaldean.calculations.soulUrge.number} (${report.chaldean.interpretations.soulUrge.title})
+          - Personality: ${report.chaldean.calculations.personality.number} (${report.chaldean.interpretations.personality.title})
+        - Summary: ${report.summary}
+        
+        Use this information to provide personalized and context-aware responses.
+        Refer to their numbers when relevant to their questions.
+    `;
+    
+    return `${CHAT_SYSTEM_PROMPT}\n\n--- User's Numerology Context ---\n${reportSummary.trim()}`;
+}
+
+async function getChatInstance(report: NumerologyReport | null): Promise<Chat> {
+    const newContext = JSON.stringify(report ? report.summary : null);
+
+    // If context has changed (new report generated or report cleared), reset the chat instance.
+    if (newContext !== lastReportContext) {
+        chatInstance = null;
+        lastReportContext = newContext;
+    }
+
     if (!chatInstance) {
         const ai = getAIClient();
+        const systemInstruction = createChatSystemPrompt(report);
         chatInstance = ai.chats.create({
             model: 'gemini-2.5-flash',
             config: {
-                systemInstruction: CHAT_SYSTEM_PROMPT,
+                systemInstruction,
+                tools: [{
+                    googleSearch: {}
+                }],
             },
         });
     }
     return chatInstance;
 }
 
-export async function continueChat(history: ChatMessage[]): Promise<string> {
+export async function continueChat(history: ChatMessage[], report: NumerologyReport | null): Promise<{ text: string; sources?: { title: string; uri: string }[] }> {
     try {
-        const chat = await getChatInstance();
-        // The Gemini Chat API expects only the most recent user message.
-        // The history is maintained within the chat instance itself.
+        const chat = await getChatInstance(report);
         const lastUserMessage = history[history.length - 1];
         if (lastUserMessage.role !== 'user') {
             throw new Error("Last message must be from user to continue chat.");
         }
         
         const response = await chat.sendMessage({ message: lastUserMessage.text });
-        return response.text;
+        
+        const text = response.text;
+        const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+        
+        const sources: { title: string; uri: string }[] = [];
+        if (groundingChunks) {
+            for (const chunk of groundingChunks) {
+                if (chunk.web) {
+                    sources.push({ title: chunk.web.title, uri: chunk.web.uri });
+                }
+            }
+        }
+
+        return { text, sources: sources.length > 0 ? sources : undefined };
+
     } catch (error) {
         console.error("Error in continueChat:", error);
-        // In case of error, reset chat instance
-        chatInstance = null; 
+        // In case of error, reset chat instance so it can be re-initialized on next message
+        chatInstance = null;
+        lastReportContext = null; 
         throw new Error("Failed to get a response from the AI assistant.");
     }
 }

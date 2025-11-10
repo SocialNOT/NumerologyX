@@ -3,6 +3,7 @@ import type { ChatMessage } from '../types';
 import { UserIcon } from './icons/UserIcon';
 import { StarIcon } from './icons/StarIcon';
 import { SendIcon } from './icons/SendIcon';
+import { LinkIcon } from './icons/LinkIcon';
 
 interface ChatProps {
     messages: ChatMessage[];
@@ -38,8 +39,25 @@ const Chat: React.FC<ChatProps> = ({ messages, onSendMessage, isLoading }) => {
                                 <StarIcon className="w-5 h-5 text-white" />
                             </div>
                         )}
-                        <div className={`max-w-xs md:max-w-md p-3 rounded-2xl ${msg.role === 'user' ? 'bg-purple-600/80 rounded-br-none' : 'bg-gray-700/60 rounded-bl-none'}`}>
-                            <p className="text-white whitespace-pre-wrap">{msg.text}</p>
+                        <div className="max-w-xs md:max-w-md">
+                            <div className={`p-3 rounded-2xl ${msg.role === 'user' ? 'bg-purple-600/80 rounded-br-none' : 'bg-gray-700/60 rounded-bl-none'}`}>
+                                <p className="text-white whitespace-pre-wrap">{msg.text}</p>
+                            </div>
+                            {msg.sources && msg.sources.length > 0 && (
+                                <div className="mt-2 text-xs text-gray-400 border-t border-white/10 pt-2">
+                                    <h4 className="font-semibold mb-1 text-gray-300">Sources:</h4>
+                                    <ul className="space-y-1">
+                                        {msg.sources.map((source, i) => (
+                                            <li key={i} className="truncate">
+                                                <a href={source.uri} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:text-cyan-300 transition-colors">
+                                                    <LinkIcon className="w-3 h-3 flex-shrink-0" />
+                                                    <span className="truncate">{source.title || new URL(source.uri).hostname}</span>
+                                                </a>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
                         </div>
                          {msg.role === 'user' && (
                             <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center flex-shrink-0">
