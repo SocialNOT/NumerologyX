@@ -1,0 +1,5 @@
+{
+  "name": "NumerologyX",
+  "description": "A single-screen, highly animated mobile web app that provides numerology reports. The app uses Gemini to generate the reports and provides a futuristic user experience.",
+  "requestFramePermissions": []
+}
